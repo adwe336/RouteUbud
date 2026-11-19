@@ -1,56 +1,42 @@
-# Welcome to your Expo app 👋
+# RouteUbud — Expo Web + Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This project keeps the original RouteUbud Expo / React Native application in `App.tsx` and adds a separate editorial website in `App.web.tsx`. Expo's platform resolver loads `App.web.tsx` for web builds and `App.tsx` for Android/iOS, so the web redesign does not replace the mobile UI.
 
-## Get started
+## Stack
+- Expo SDK 58, React 19, React Native 0.88 and React Native Web (kept from the supplied configuration)
+- TypeScript
+- Leaflet + OpenStreetMap for the dedicated interactive map
+- Static web export to `dist/`, deployable on GitHub + Vercel
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
+## Run locally
 ```bash
-npm run reset-project
+npm install
+npx expo start --web
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Mobile remains available with:
+```bash
+npx expo start
+```
 
-### Other setup steps
+## Build for Vercel
+```bash
+npm run build:web
+```
+Vercel configuration is included in `vercel.json`:
+- Build command: `npx expo export --platform web`
+- Output directory: `dist`
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Push this folder to a GitHub repository, import it into Vercel, and deploy. If Vercel does not detect settings automatically, use the values above.
 
-## Learn more
+## Local photography
+The website uses local files in `public/photos/`. Copy your destination-specific photos there using the filenames listed in `public/photos/README.md`. Missing files show a neutral branded placeholder; no unrelated stock photo is silently substituted. The original mobile app's photo slots are documented in its `PHOTO` map inside `App.tsx` and currently remain commented out as in the supplied source.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Map data note
+The map uses the destination names and map search queries from the supplied app source. Marker coordinates in `src/content.ts` are approximate display positions for the prototype, not verified navigation coordinates. Use each marker's Google Maps search link for live directions and verify exact pins before public launch. OpenStreetMap map tiles require an internet connection and are subject to the tile provider's usage policy.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Important prototype limitations carried forward
+- The original app labels ratings/times as sample values; this website does not present those as verified facts.
+- Business names and cultural descriptions are reproduced from the supplied app content. Verify current operations and culturally sensitive material with local stakeholders before publishing.
+- Website language switch supports English and Bahasa Indonesia for its content sections.
+- This is a static website prototype. It does not yet share account data, saved places, or user profiles with the mobile app; no backend/API was present in the supplied source.

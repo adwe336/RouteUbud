@@ -1,6 +1,6 @@
 // RouteUbud v4 — Expo / React Native (TypeScript)
 // Install: npx expo install @react-native-async-storage/async-storage expo-crypto @expo/vector-icons react-native-maps
-// Peta (react-native-maps) berjalan di Android/iOS. Di web, peta diganti daftar lokasi + tombol "Buka di Maps".
+// Peta interaktif memakai Leaflet + OpenStreetMap di web dan react-native-maps di Android/iOS.
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
@@ -151,7 +151,7 @@ const S = {
   // Map
   mapTitle: L("Ubud Map", "Peta Ubud"),
   mapSub: L("Destinations, food and local makers in one map", "Destinasi, kuliner, dan pengrajin lokal dalam satu peta"),
-  mapWeb: L("The interactive map works in the Android and iOS app. Use this list and open each place in Maps.", "Peta interaktif tersedia di aplikasi Android dan iOS. Gunakan daftar ini dan buka tiap tempat di Maps."),
+  mapWeb: L("Explore Ubud on the map. Select a pin to see the destination.", "Jelajahi Ubud melalui peta. Pilih penanda untuk melihat destinasi."),
   approx: L("Approximate pin. Confirm the exact spot in Maps.", "Titik perkiraan. Konfirmasi lokasi pastinya di Maps."),
   noGeo: L("Nothing on the map for this filter yet.", "Belum ada lokasi di peta untuk filter ini."),
   details: L("Details", "Detail"),
@@ -243,11 +243,11 @@ const pic = (id: string, fallback: string): ImageSourcePropType => PHOTO[id] ?? 
    Item tanpa lokasi pasti (u2 Demo perak, u7 Dagang Topot) belum ditaruh di peta. */
 type Geo = { lat: number; lng: number; approx?: boolean };
 const GEO: Record<string, Geo> = {
-  p1: { lat: -8.4312, lng: 115.2793 }, p2: { lat: -8.5069, lng: 115.2603 }, p3: { lat: -8.5027, lng: 115.2528 },
-  p4: { lat: -8.5069, lng: 115.2625 }, p5: { lat: -8.5188, lng: 115.2589 }, p6: { lat: -8.4990, lng: 115.2830, approx: true },
+  p1: { lat: -8.432172, lng: 115.278694 }, p2: { lat: -8.5069, lng: 115.2603 }, p3: { lat: -8.498515, lng: 115.255227 },
+  p4: { lat: -8.5069, lng: 115.2625 }, p5: { lat: -8.518598, lng: 115.260080 }, p6: { lat: -8.4990, lng: 115.2830, approx: true },
   p7: { lat: -8.5850, lng: 115.2760, approx: true }, p8: { lat: -8.4833, lng: 115.2822, approx: true },
   p9: { lat: -8.5062, lng: 115.2604 }, p10: { lat: -8.5143, lng: 115.2737 }, p11: { lat: -8.5160, lng: 115.2650, approx: true },
-  p12: { lat: -8.5575, lng: 115.2690 }, p13: { lat: -8.5073, lng: 115.2520 },
+  p12: { lat: -8.533819, lng: 115.280519 }, p13: { lat: -8.5073, lng: 115.2520 },
   u1: { lat: -8.5530, lng: 115.2690, approx: true }, u3: { lat: -8.5130, lng: 115.2740, approx: true },
   u4: { lat: -8.5039, lng: 115.2622 }, u5: { lat: -8.5010, lng: 115.2470, approx: true },
   u6: { lat: -8.5440, lng: 115.3260, approx: true }, u8: { lat: -8.5200, lng: 115.2750, approx: true },
@@ -422,6 +422,46 @@ const ITEMS: Item[] = [
     tips: [L("Handwoven cloth takes days to make; prices reflect that", "Kain tenun tangan butuh berhari-hari; harganya mencerminkan itu")],
     mapQuery: "Banjar Pesalakan Ubud tenun" },
 ];
+// Foto destinasi dari Wikimedia Commons (URL internet, tidak disimpan di assets lokal).
+// Nama file pada URL merujuk ke foto yang sesuai dengan lokasi/tema.
+const commonsPhoto = (file: string) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=1200`;
+const REAL_PHOTOS: Record<string, string> = {
+  p1: commonsPhoto("Tegalalang Rice Terraces.jpg"),
+  p2: commonsPhoto("Pura Taman Saraswati (Ubud, Bali, Indonesia).jpg"),
+  p3: commonsPhoto("Campuhan Ridge Walk, Ubud, Bali (15003626658).jpg"),
+  p4: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
+  p5: commonsPhoto("Sacred Monkey Forest Sanctuary (49818583783).jpg"),
+  p6: commonsPhoto("Rice terraces, Ubud, Bali.jpg"),
+  p7: commonsPhoto("Sumampan Waterfall.jpg"),
+  p8: commonsPhoto("Couple Kokokan Bird.jpg"),
+  p9: commonsPhoto("Puri Lukisan Museum (16435717564).jpg"),
+  p10: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
+  p11: commonsPhoto("Puri Lukisan Museum2.JPG"),
+  p12: commonsPhoto("001 First House, Setia Darma Mask and Puppet House, Ubud, Bali, photograph by Anandajoti Bhikkhu.jpg"),
+  p13: commonsPhoto("Pura Gunung Lebah1.JPG"),
+  c1: commonsPhoto("Canang sari.jpg"),
+  c2: commonsPhoto("Rice terraces, Ubud, Bali.jpg"),
+  c3: commonsPhoto("Tegalalang Rice Terraces.jpg"),
+  c4: commonsPhoto("Puri Lukisan Museum (16435717564).jpg"),
+  c5: commonsPhoto("Canang sari.jpg"),
+  c6: commonsPhoto("Pura Taman Saraswati (Ubud, Bali, Indonesia).jpg"),
+  c7: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
+  c8: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
+  c9: commonsPhoto("Pura Gunung Lebah1.JPG"),
+  u1: commonsPhoto("Wood carving in Bali.jpg"),
+  u2: commonsPhoto("Wood carving in Bali.jpg"),
+  u3: commonsPhoto("Ayam Betutu Bali.jpg"),
+  u4: commonsPhoto("Babi guling.jpg"),
+  u5: commonsPhoto("Ayam Betutu Bali.jpg"),
+  u6: commonsPhoto("Nasi babi guling.jpg"),
+  u7: commonsPhoto("Nasi babi guling.jpg"),
+  u8: commonsPhoto("Weaving in Bali.jpg"),
+};
+ITEMS.forEach(item => {
+  const url = REAL_PHOTOS[item.id];
+  if (url) item.image = { uri: url };
+});
+
 const byId: Record<string, Item> = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const MAPPED = ITEMS.filter(i => GEO[i.id]);
 const videoUrl = (i: Item) => VIDEO[i.id] ?? ytSearch(VQ[i.id] ?? `${i.title.en} Ubud Bali`);
@@ -958,11 +998,30 @@ function MapScreen({ filter, setFilter, plan, planDay, setPlanDay, focus, onOpen
   );
 
   if (!RNMaps) {
+    const mapPoints = shown.map((i, n) => ({
+      id: i.id, name: i.title.en, kind: KIND[i.kind]?.en ?? i.kind,
+      lat: GEO[i.id].lat, lng: GEO[i.id].lng, image: (i.image as any)?.uri ?? "",
+      order: n + 1, approx: !!GEO[i.id].approx,
+    }));
+    const routePoints = filter === "plan" ? planItems.map(i => [GEO[i.id].lat, GEO[i.id].lng]) : [];
+    const mapHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#e7dfd2}.leaflet-popup-content-wrapper{border-radius:12px}.leaflet-popup-content{margin:10px;font:13px Arial}.pin{background:#4B2328;border:2px solid #E7DFD2;border-radius:50%;width:30px;height:30px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 7px #3338}.leaflet-control-attribution{font-size:9px}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
+      const points=${JSON.stringify(mapPoints)}; const route=${JSON.stringify(routePoints)};
+      const map=L.map('map',{scrollWheelZoom:true}).setView([-8.5069,115.2625],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
+      const bounds=[];
+      points.forEach(p=>{const marker=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div class="pin">'+( ${JSON.stringify(filter)}==='plan'?p.order:'•')+'</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map);
+      marker.bindPopup('<div style="width:190px"><img src="'+p.image+'" style="width:100%;height:95px;object-fit:cover;border-radius:8px" onerror="this.remove()"><b>'+p.name+'</b><div style="color:#6B6257;margin-top:3px">'+p.kind+(p.approx?' · approximate pin':'')+'</div><a target="_blank" href="https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng+'">Open in Google Maps</a></div>'); bounds.push([p.lat,p.lng]);});
+      if(route.length>1)L.polyline(route,{color:'#4B2328',weight:4,opacity:.8}).addTo(map);
+      if(bounds.length>1)map.fitBounds(bounds,{padding:[28,28]});else if(bounds.length===1)map.setView(bounds[0],15);
+    </script></body></html>`;
     return (
       <ScrollView contentContainerStyle={{ paddingBottom: 30 }}>
         {head}
         <View style={{ paddingHorizontal: 20 }}>
           <Text style={{ color: C.muted, fontSize: 13, lineHeight: 19, marginBottom: 12 }}>{t(S.mapWeb)}</Text>
+          <View style={{ height: 430, borderRadius: 18, overflow: "hidden", borderWidth: 1, borderColor: C.line, marginBottom: 18, backgroundColor: C.sage }}>
+            {React.createElement("iframe" as any, { title: "RouteUbud interactive map", srcDoc: mapHtml, style: { width: "100%", height: "100%", border: 0 }, loading: "lazy", allowFullScreen: true })}
+          </View>
           {shown.length === 0 ? <Text style={{ color: C.muted }}>{t(S.noGeo)}</Text> : shown.map(i => (
             <View key={i.id}>
               <ItemRow {...rowProps(i)} />

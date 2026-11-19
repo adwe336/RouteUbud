@@ -33,10 +33,10 @@ const C = {
   paper: "#F2ECE2", green2: "#2F4A3A", sage: "#D8D5C2", sage2: "#BDBCA4",
   gold: "#A98763", goldSoft: "#D9CBB5", star: "#D9B382",
   ink: "#141C2C", muted: "#6B6257", line: "#CFC4B2", white: "#FFFFFF",
-  padi: "#1E2F25",   // deep green -> places
-  kunyit: "#3C2A20", // brown      -> culture
-  bunga: "#4B2328",  // burgundy   -> what to wear
-  lawar: "#141C2C",  // navy       -> local makers
+  padi: "#2F6B4F",   // nature & tourism
+  kunyit: "#A98763", // culture & history
+  bunga: "#8A5A9E",  // temples & sacred places
+  lawar: "#3E668C",  // crafts & UMKM
   red: "#4B2328",
   errBg: "#E6CFC9",
 };
@@ -113,7 +113,7 @@ const S = {
   clearHistory: L("Clear viewing history", "Hapus riwayat lihat"),
   helpText: L("Help center is coming soon. For now, confirm local details with your host or the site itself.", "Pusat bantuan segera hadir. Untuk saat ini, konfirmasi detail lokal dengan tuan rumah atau pengelola lokasi."),
   aboutText: L("Om Swastiastu. RouteUbud is your smart travel companion in Ubud: discover places, learn the meaning behind traditions, dress with respect, support local makers, and travel sustainably.", "Om Swastiastu. RouteUbud adalah teman perjalanan pintar Anda di Ubud: temukan tempat, pelajari makna di balik tradisi, berbusana dengan hormat, dukung pengrajin lokal, dan berwisata berkelanjutan."),
-  disclaimer: L("Prototype content. Ratings and times are sample values. Confirm access, cultural guidance and business details with trusted local sources.", "Konten prototipe. Rating dan waktu hanyalah contoh. Konfirmasi akses, panduan budaya, dan detail usaha dengan sumber lokal tepercaya."),
+  disclaimer: L("Prototype content. Visit durations are estimates; ratings are shown only when verified. Confirm access, cultural guidance and business details with trusted local sources.", "Konten prototipe. Durasi kunjungan merupakan perkiraan; rating hanya ditampilkan jika sudah terverifikasi. Konfirmasi akses, panduan budaya, dan detail usaha dengan sumber lokal tepercaya."),
   checkLocal: L("Opening hours, prices and menus can change. Please confirm locally.", "Jam buka, harga, dan menu dapat berubah. Mohon konfirmasi langsung di lokasi."),
   foodRec: L("Food Recommendation", "Rekomendasi Kuliner"),
   next: L("Next", "Lanjut"), finish: L("Finish", "Selesai"), close: L("Close", "Tutup"),
@@ -275,7 +275,7 @@ type Item = {
 
 const ITEMS: Item[] = [
   /* ── Places: Nature ── */
-  { id: "p1", cat: "place", kind: "nature", title: same("Tegallalang Rice Terrace"), loc: same("Tegallalang"), image: pic("p1", IMG.terrace), rating: 4.8, mins: 25,
+  { id: "p1", cat: "place", kind: "nature", title: same("Tegallalang Rice Terrace"), loc: same("Tegallalang"), image: pic("p1", IMG.terrace), mins: 25,
     body: L("Terraced rice fields north of Ubud, shaped by the subak irrigation system. Visit early for softer light and fewer crowds.",
             "Sawah bertingkat di utara Ubud yang dibentuk oleh sistem irigasi subak. Datanglah pagi hari untuk cahaya lembut dan lebih sedikit keramaian."),
     tips: [L("Check weather and access before going", "Cek cuaca dan akses sebelum berangkat"),
@@ -307,7 +307,7 @@ const ITEMS: Item[] = [
     tips: [L("Go in the late afternoon for the herons", "Datang sore hari untuk melihat kokokan"),
            L("Keep quiet and do not disturb the birds", "Jaga ketenangan dan jangan mengganggu burung")],
     mapQuery: "Desa Kokokan Petulu" },
-  { id: "p3", cat: "place", kind: "nature", title: same("Campuhan Ridge Walk"), loc: same("Ubud"), image: pic("p3", IMG.ridge), rating: 4.7, mins: 20,
+  { id: "p3", cat: "place", kind: "nature", title: same("Campuhan Ridge Walk"), loc: same("Ubud"), image: pic("p3", IMG.ridge), mins: 20,
     body: L("A ridge-top walking route through grassy hills close to town. Best outside the midday heat.",
             "Jalur jalan kaki di punggung bukit berumput dekat pusat kota. Paling nyaman di luar panas tengah hari."),
     tips: [L("Bring water and sun protection", "Bawa air minum dan pelindung matahari"),
@@ -319,7 +319,7 @@ const ITEMS: Item[] = [
     body: L("One of Ubud's long-standing art museums, with Balinese painting and carving. A good first stop to understand the town's arts.",
             "Salah satu museum seni tertua di Ubud, menampilkan lukisan dan ukiran Bali. Tempat awal yang baik untuk memahami seni Ubud."),
     mapQuery: "Museum Puri Lukisan Ubud" },
-  { id: "p4", cat: "place", kind: "culture", title: same("Puri Saren Agung (Ubud Palace)"), loc: L("Central Ubud", "Pusat Ubud"), image: pic("p4", IMG.worship), rating: 4.6, mins: 10,
+  { id: "p4", cat: "place", kind: "culture", title: same("Puri Saren Agung (Ubud Palace)"), loc: L("Central Ubud", "Pusat Ubud"), image: pic("p4", IMG.worship), mins: 10,
     body: L("A royal palace complex in the heart of Ubud and a landmark of the town's history and arts. Check visiting hours and performance schedules locally.",
             "Kompleks puri di jantung Ubud dan penanda sejarah serta seni kota ini. Cek jam kunjungan dan jadwal pertunjukan secara lokal."),
     mapQuery: "Puri Saren Agung Ubud" },
@@ -337,7 +337,7 @@ const ITEMS: Item[] = [
     mapQuery: "Setia Darma House of Masks and Puppets Mas" },
 
   /* ── Places: Temple ── */
-  { id: "p2", cat: "place", kind: "temple", title: same("Pura Taman Saraswati"), loc: L("Central Ubud", "Pusat Ubud"), image: pic("p2", IMG.temple), rating: 4.8, mins: 15,
+  { id: "p2", cat: "place", kind: "temple", title: same("Pura Taman Saraswati"), loc: L("Central Ubud", "Pusat Ubud"), image: pic("p2", IMG.temple), mins: 15,
     body: L("A temple known for its lotus pond in the middle of Ubud. Confirm visitor access and ceremony schedules locally before your visit.",
             "Pura yang dikenal dengan kolam teratainya di tengah Ubud. Konfirmasi akses pengunjung dan jadwal upacara secara lokal sebelum berkunjung."),
     tips: [L("Follow posted rules and staff guidance", "Ikuti aturan yang terpasang dan arahan petugas"),
@@ -422,40 +422,75 @@ const ITEMS: Item[] = [
     tips: [L("Handwoven cloth takes days to make; prices reflect that", "Kain tenun tangan butuh berhari-hari; harganya mencerminkan itu")],
     mapQuery: "Banjar Pesalakan Ubud tenun" },
 ];
-// Foto destinasi dari Wikimedia Commons (URL internet, tidak disimpan di assets lokal).
-// Nama file pada URL merujuk ke foto yang sesuai dengan lokasi/tema.
+// Foto memakai sumber Commons dan situs resmi yang relevan. Beberapa foto kategori adalah ilustrasi tema, bukan foto vendor/lokasi spesifik.
 const commonsPhoto = (file: string) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=1200`;
 const REAL_PHOTOS: Record<string, string> = {
-  p1: commonsPhoto("Tegalalang Rice Terraces.jpg"),
-  p2: commonsPhoto("Pura Taman Saraswati (Ubud, Bali, Indonesia).jpg"),
-  p3: commonsPhoto("Campuhan Ridge Walk, Ubud, Bali (15003626658).jpg"),
-  p4: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
+  // Place-specific photos verified against the source page / caption.
+  p1: commonsPhoto("Tegallalang Rice Terrace.jpg"),
+  p2: commonsPhoto("Lotus flower, Pura Taman Saraswati, Ubud, Bali, 20220823 0841 0253.jpg"),
+  p3: commonsPhoto("Campuhan Ridge Walk, Ubud, Bali, 20220822 1422 0140.jpg"),
+  p4: commonsPhoto("Ubud palace.jpg"),
   p5: commonsPhoto("Sacred Monkey Forest Sanctuary (49818583783).jpg"),
-  p6: commonsPhoto("Rice terraces, Ubud, Bali.jpg"),
+  p6: commonsPhoto("Rice Terrace in Ubud.jpg"), // representative rice-field landscape; not claimed as Sok Wayah itself
   p7: commonsPhoto("Sumampan Waterfall.jpg"),
-  p8: commonsPhoto("Couple Kokokan Bird.jpg"),
+  p8: commonsPhoto("Kokokan Birds.jpg"),
   p9: commonsPhoto("Puri Lukisan Museum (16435717564).jpg"),
-  p10: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
-  p11: commonsPhoto("Puri Lukisan Museum2.JPG"),
-  p12: commonsPhoto("001 First House, Setia Darma Mask and Puppet House, Ubud, Bali, photograph by Anandajoti Bhikkhu.jpg"),
+  p10: commonsPhoto("Peliatan, Ubud 200507-2.jpg"), // Peliatan village context; not a verified Puri Agung facade
+  p11: "https://cdn.digitaldesa.com/uploads/profil/51.04.05.2002/berita/4e6f7936a28094713b5798008ea5fdc2.jpg",
+  p12: "https://www.maskandpuppets.com/Asset/Images/HD/Feature/11.jpg",
   p13: commonsPhoto("Pura Gunung Lebah1.JPG"),
-  c1: commonsPhoto("Canang sari.jpg"),
-  c2: commonsPhoto("Rice terraces, Ubud, Bali.jpg"),
-  c3: commonsPhoto("Tegalalang Rice Terraces.jpg"),
-  c4: commonsPhoto("Puri Lukisan Museum (16435717564).jpg"),
+  // Culture: each ID has a distinct image relevant to its subject.
+  c1: commonsPhoto("Making canang at Pasar Ubud.jpg"),
+  c2: commonsPhoto("Kesederhaan orang bali. The simplicity of Balinese.jpg"),
+  c3: commonsPhoto("WikiSubak - Soka - ES -22 irigasi sawah.jpg"),
+  c4: commonsPhoto("Balinese dance in Ubud, Kecak, 20220822 1839 0180.jpg"),
   c5: commonsPhoto("Canang sari.jpg"),
-  c6: commonsPhoto("Pura Taman Saraswati (Ubud, Bali, Indonesia).jpg"),
-  c7: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
-  c8: commonsPhoto("Puri Saren Agung, Ubud, Bali.jpg"),
-  c9: commonsPhoto("Pura Gunung Lebah1.JPG"),
+  c6: commonsPhoto("Upacara Melasti Masyarakat Hindu Bali.jpg"),
+  c7: commonsPhoto("Balinese greetings on a class entrance.JPG"),
+  c8: commonsPhoto("Ngaben Ceremony or Cremation in Bali.jpg"),
+  c9: commonsPhoto("Pura Gunung Lebah2.JPG"),
+  // UMKM / food: distinct thematic images; exact vendor attribution is not implied unless stated.
   u1: commonsPhoto("Wood carving in Bali.jpg"),
-  u2: commonsPhoto("Wood carving in Bali.jpg"),
-  u3: commonsPhoto("Ayam Betutu Bali.jpg"),
+  u2: commonsPhoto("Making silver jewellery.jpg"),
+  u3: commonsPhoto("Bebek tutu.jpg"),
   u4: commonsPhoto("Babi guling.jpg"),
   u5: commonsPhoto("Ayam Betutu Bali.jpg"),
-  u6: commonsPhoto("Nasi babi guling.jpg"),
-  u7: commonsPhoto("Nasi babi guling.jpg"),
+  u6: commonsPhoto("Klepon Top View.jpg"),
+  u7: commonsPhoto("TRADITIONAL MARKET.jpg"),
   u8: commonsPhoto("Weaving in Bali.jpg"),
+};
+
+// Photo credits are surfaced on each detail page. Confirm each file's license before commercial use.
+const PHOTO_CREDITS: Record<string, { label: string; url: string }> = {
+  p1: { label: "Tegallalang Rice Terrace · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Tegallalang_Rice_Terrace.jpg" },
+  p2: { label: "Jakub Hałun · CC BY-SA 4.0 · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Lotus_flower,_Pura_Taman_Saraswati,_Ubud,_Bali,_20220823_0841_0253.jpg" },
+  p3: { label: "Jakub Hałun · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Campuhan_Ridge_Walk,_Ubud,_Bali,_20220822_1422_0140.jpg" },
+  p4: { label: "Ubud Palace · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Ubud_palace.jpg" },
+  p5: { label: "Jorge Franganillo · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Sacred_Monkey_Forest_Sanctuary_(49818583783).jpg" },
+  p7: { label: "Anggabuana · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Sumampan_Waterfall.jpg" },
+  p8: { label: "Kokokan Birds at Petulu · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Kokokan_Birds.jpg" },
+  p11: { label: "Pemerintah Desa Mas · Museum Pendet", url: "https://mas.desa.id/wisata/museum-pendet" },
+  p12: { label: "Official Setia Darma Museum gallery · Wayang collection", url: "https://www.maskandpuppets.com/overall.html" },
+  c1: { label: "Marklchaves · CC BY-SA 4.0 · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Making_canang_at_Pasar_Ubud.jpg" },
+  c4: { label: "Jakub Hałun · CC BY-SA 4.0 · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Balinese_dance_in_Ubud,_Kecak,_20220822_1839_0180.jpg" },
+  c6: { label: "Upacara Melasti · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Upacara_Melasti_Masyarakat_Hindu_Bali.jpg" },
+  c8: { label: "Krisnayuda3 · CC BY 4.0 · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Ngaben_Ceremony_or_Cremation_in_Bali.jpg" },
+  c9: { label: "Pura Gunung Lebah · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Pura_Gunung_Lebah2.JPG" },
+  p6: { label: "Rice Terrace in Ubud · Wikimedia Commons (representative landscape)", url: "https://commons.wikimedia.org/wiki/File:Rice_Terrace_in_Ubud.jpg" },
+  p9: { label: "Museum Puri Lukisan · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Puri_Lukisan_Museum_(16435717564).jpg" },
+  p10: { label: "Peliatan village · Wikimedia Commons (not a verified palace facade)", url: "https://commons.wikimedia.org/wiki/File:Peliatan,_Ubud_200507-2.jpg" },
+  c2: { label: "Yande Artha · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Kesederhaan_orang_bali._The_simplicity_of_Balinese.jpg" },
+  c3: { label: "Eka343 · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:WikiSubak_-_Soka_-_ES_-22_irigasi_sawah.jpg" },
+  c5: { label: "Canang Sari · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Canang_sari.jpg" },
+  c7: { label: "Balinese greetings · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Balinese_greetings_on_a_class_entrance.JPG" },
+  u1: { label: "Wood carving in Bali · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Wood_carving_in_Bali.jpg" },
+  u2: { label: "Mauro Cateb · Making silver jewellery · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Making_silver_jewellery.jpg" },
+  u3: { label: "Bebek tutu · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Bebek_tutu.jpg" },
+  u4: { label: "Babi guling · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Babi_guling.jpg" },
+  u5: { label: "Ayam Betutu Bali · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Ayam_Betutu_Bali.jpg" },
+  u6: { label: "Klepon Top View · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Klepon_Top_View.jpg" },
+  u7: { label: "Dedy Siswandi · Traditional market · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:TRADITIONAL_MARKET.jpg" },
+  u8: { label: "Weaving in Bali · Wikimedia Commons", url: "https://commons.wikimedia.org/wiki/File:Weaving_in_Bali.jpg" },
 };
 ITEMS.forEach(item => {
   const url = REAL_PHOTOS[item.id];
@@ -482,7 +517,10 @@ const openRoute = (stops: Item[]) => {
   Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(refs[refs.length - 1])}${wp.length ? `&waypoints=${encodeURIComponent(wp.join("|"))}` : ""}&travelmode=driving`).catch(() => {});
 };
 
-const kindColor = (k: string) => ({ nature: C.green2, culture: C.brown, temple: C.burgundy, handicraft: C.navy, fashion: C.navy, food: C.gold } as Record<string, string>)[k] ?? C.green;
+const kindColor = (k: string) => ({
+  nature: "#2F6B4F", temple: "#8A5A9E", culture: "#A98763",
+  food: "#C47A32", handicraft: "#3E668C", fashion: "#3E668C",
+} as Record<string, string>)[k] ?? C.green;
 const kindIcon = (k: string) => ({ nature: "tree", culture: "bank", temple: "temple-hindu", handicraft: "palette", fashion: "tshirt-crew", food: "silverware-fork-knife" } as Record<string, string>)[k] ?? "map-marker";
 
 const WEAR: Record<string, { image: ImageSourcePropType; heading: L; items: L[] }> = {
@@ -999,17 +1037,17 @@ function MapScreen({ filter, setFilter, plan, planDay, setPlanDay, focus, onOpen
 
   if (!RNMaps) {
     const mapPoints = shown.map((i, n) => ({
-      id: i.id, name: i.title.en, kind: KIND[i.kind]?.en ?? i.kind,
+      id: i.id, name: i.title.en, kind: KIND[i.kind]?.en ?? i.kind, color: kindColor(i.kind),
       lat: GEO[i.id].lat, lng: GEO[i.id].lng, image: (i.image as any)?.uri ?? "",
       order: n + 1, approx: !!GEO[i.id].approx,
     }));
     const routePoints = filter === "plan" ? planItems.map(i => [GEO[i.id].lat, GEO[i.id].lng]) : [];
-    const mapHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#e7dfd2}.leaflet-popup-content-wrapper{border-radius:12px}.leaflet-popup-content{margin:10px;font:13px Arial}.pin{background:#4B2328;border:2px solid #E7DFD2;border-radius:50%;width:30px;height:30px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 7px #3338}.leaflet-control-attribution{font-size:9px}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
+    const mapHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#e7dfd2}.leaflet-popup-content-wrapper{border-radius:12px}.leaflet-popup-content{margin:10px;font:13px Arial}.pin{border:2px solid #E7DFD2;border-radius:50%;width:30px;height:30px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 7px #3338}.leaflet-control-attribution{font-size:9px}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
       const points=${JSON.stringify(mapPoints)}; const route=${JSON.stringify(routePoints)};
       const map=L.map('map',{scrollWheelZoom:true}).setView([-8.5069,115.2625],13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
       const bounds=[];
-      points.forEach(p=>{const marker=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div class="pin">'+( ${JSON.stringify(filter)}==='plan'?p.order:'•')+'</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map);
+      points.forEach(p=>{const marker=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div class="pin" style="background:'+p.color+'">'+( ${JSON.stringify(filter)}==='plan'?p.order:'•')+'</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map);
       marker.bindPopup('<div style="width:190px"><img src="'+p.image+'" style="width:100%;height:95px;object-fit:cover;border-radius:8px" onerror="this.remove()"><b>'+p.name+'</b><div style="color:#6B6257;margin-top:3px">'+p.kind+(p.approx?' · approximate pin':'')+'</div><a target="_blank" href="https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng+'">Open in Google Maps</a></div>'); bounds.push([p.lat,p.lng]);});
       if(route.length>1)L.polyline(route,{color:'#4B2328',weight:4,opacity:.8}).addTo(map);
       if(bounds.length>1)map.fitBounds(bounds,{padding:[28,28]});else if(bounds.length===1)map.setView(bounds[0],15);
@@ -1768,6 +1806,11 @@ export default function App() {
                     {active.rating ? <><Icon name="star" size={14} color={C.star} /><Text style={{ fontSize: 13, color: C.muted }}>{active.rating}</Text></> : null}
                     {active.mins ? <Text style={{ fontSize: 13, color: C.muted }}>· {t(S.min(active.mins))}</Text> : null}
                   </View>
+                  {PHOTO_CREDITS[active.id] && (
+                    <Pressable onPress={() => Linking.openURL(PHOTO_CREDITS[active.id].url).catch(() => {})} style={{ marginTop: 8 }}>
+                      <Text style={{ color: C.muted, fontSize: 11, textDecorationLine: "underline" }}>Photo source: {PHOTO_CREDITS[active.id].label}</Text>
+                    </Pressable>
+                  )}
                   <Text style={{ fontFamily: SERIF, fontSize: 16, color: C.brown, lineHeight: 27, marginTop: 18 }}>{t(active.body)}</Text>
                   {active.tips && (
                     <View style={{ marginTop: 20, backgroundColor: C.paper, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: C.line }}>

@@ -1,10 +1,10 @@
-// RouteUbud v4 — Expo / React Native (TypeScript)
-// Install: npx expo install @react-native-async-storage/async-storage expo-crypto @expo/vector-icons react-native-maps
+// RouteUbud v5 — Expo / React Native (TypeScript)
+// Install: npx expo install @react-native-async-storage/async-storage expo-crypto @expo/vector-icons react-native-maps expo-image-picker expo-image-manipulator
 // Peta interaktif memakai Leaflet + OpenStreetMap di web dan react-native-maps di Android/iOS.
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Crypto from "expo-crypto";
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator, Alert,
   Image,
@@ -22,32 +22,39 @@ import {
   View,
 } from "react-native";
 
+let ImagePicker: any = null; try { ImagePicker = require("expo-image-picker"); } catch { ImagePicker = null; }
+let Manipulator: any = null; try { Manipulator = require("expo-image-manipulator"); } catch { Manipulator = null; }
 let RNMaps: any = null;
 if (Platform.OS !== "web") { try { RNMaps = require("react-native-maps"); } catch { RNMaps = null; } }
 
-/* ───────────────────────── Tokens (palet baru) ─────────────────────────
-   BURGUNDY #4B2328 · CREAM #E7DFD2 · DEEP GREEN #1E2F25 · NAVY #141C2C · BROWN #3C2A20
-   Warna lain (paper, sage, line, muted) hanyalah turunan lembut dari kelima warna ini. */
+/* ───────────────────────── Tokens (palet brand v2) ─────────────────────────
+   BEIGE CREAM #C7B6A6 (kanvas + teks terbalik di atas gelap) · FOREST GREEN #0E3325 (utama)
+   CHARCOAL BLACK #141414 (teks utama di atas terang) · BURGUNDY #4B2328 · MUSTARD #C98C12 · OLIVE #6E7324
+   Warna turunan (paper, sage, line, muted, *Ink) hanya variasi tint/shade dari keenam warna ini. */
 const C = {
-  burgundy: "#4B2328", cream: "#E7DFD2", green: "#1E2F25", navy: "#141C2C", brown: "#3C2A20",
-  paper: "#F2ECE2", green2: "#2F4A3A", sage: "#D8D5C2", sage2: "#BDBCA4",
-  gold: "#A98763", goldSoft: "#D9CBB5", star: "#D9B382",
-  ink: "#141C2C", muted: "#6B6257", line: "#CFC4B2", white: "#FFFFFF",
-  padi: "#2F6B4F",   // nature & tourism
-  kunyit: "#A98763", // culture & history
-  bunga: "#8A5A9E",  // temples & sacred places
-  lawar: "#3E668C",  // crafts & UMKM
+  cream: "#e2d8ce", green: "#0E3325", ink: "#141414",
+  burgundy: "#4B2328", mustard: "#C98C12", olive: "#6E7324",
+  // turunan
+  paper: "#D9CCBE", green2: "#1F5A40", sage: "#B9B496", sage2: "#9FA07A",
+  goldSoft: "#E2CB93", muted: "#4A4138", line: "#AE9C8A", errBg: "#D6B4AC",
+  oliveInk: "#4A4E15", mustardInk: "#5E3F06",
+  white: "#C7B6A6",   // teks/ikon di atas latar gelap = BEIGE CREAM
+  gold: "#C98C12", star: "#C98C12", brown: "#141414", navy: "#141414",
+  padi: "#1f4720",    // nature & tourism   -> olive
+  kunyit: "#C98C12",  // culture & history  -> mustard
+  bunga: "#4B2328",   // temples & wear     -> burgundy
+  lawar: "#1f6a6b",   // crafts & UMKM      -> charcoal
   red: "#4B2328",
-  errBg: "#E6CFC9",
 };
 const CATC: Record<string, string> = { explore: C.padi, culture: C.kunyit, wear: C.bunga, umkm: C.lawar, act: C.green2 };
-const onColor = (_bg: string) => C.white;
-const INK: Record<string, string> = { place: C.green2, culture: C.brown, umkm: C.navy };
+// Teks di atas warna: charcoal di atas mustard (terang), beige cream di atas warna gelap.
+const onColor = (bg: string) => (bg === C.mustard ? C.ink : C.cream);
+const INK: Record<string, string> = { place: C.oliveInk, culture: C.mustardInk, umkm: C.ink };
 const CATB: Record<string, string> = { place: C.padi, culture: C.kunyit, umkm: C.lawar };
 const CATI: Record<string, string> = { place: "map-marker-radius", culture: "temple-hindu", umkm: "storefront" };
 const SERIF = Platform.select({ ios: "Georgia", android: "serif", default: "serif" });
 const TOP = Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0;
-const SOFT = { shadowColor: "#141C2C", shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 } as const;
+const SOFT = { shadowColor: "#141414", shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2 } as const;
 
 // Where suggestions are sent. Leave "" to only save them on the device.
 const SUGGEST_EMAIL = "";
@@ -184,6 +191,31 @@ const S = {
   quizWear: L("Quiz: Dress & Etiquette", "Kuis: Busana & Etika"),
   quizPlaces: L("Quiz: Places in Ubud", "Kuis: Tempat di Ubud"),
   quizGreen: L("Quiz: Sustainable Ubud", "Kuis: Ubud Berkelanjutan"),
+  // Account
+  editProfile: L("Edit profile", "Ubah profil"),
+  choosePhoto: L("Choose from gallery", "Pilih dari galeri"),
+  takePhoto: L("Take a photo", "Ambil foto"),
+  removePhoto: L("Remove photo", "Hapus foto"),
+  photoPerm: L("Permission is needed to use your photos or camera. You can allow it in your device settings.", "Izin diperlukan untuk memakai foto atau kamera. Anda dapat mengizinkannya di pengaturan perangkat."),
+  photoErr: L("The photo could not be used. Try another one.", "Foto tidak dapat dipakai. Coba foto lain."),
+  photoPkg: L("Photo upload needs the expo-image-picker package. Run: npx expo install expo-image-picker", "Unggah foto membutuhkan paket expo-image-picker. Jalankan: npx expo install expo-image-picker"),
+  displayName: L("Display name", "Nama tampilan"),
+  saveChanges: L("Save changes", "Simpan perubahan"),
+  nameSaved: L("Profile updated.", "Profil diperbarui."),
+  changePassword: L("Change password", "Ubah kata sandi"),
+  currentPw: L("Current password", "Kata sandi saat ini"),
+  newPw: L("New password", "Kata sandi baru"),
+  confirmPw: L("Confirm password", "Konfirmasi kata sandi"),
+  errPw8: L("Use at least 8 characters with a letter and a number.", "Gunakan minimal 8 karakter dengan huruf dan angka."),
+  errConfirm: L("Passwords do not match.", "Kata sandi tidak sama."),
+  errCurrent: L("Current password is incorrect.", "Kata sandi saat ini salah."),
+  pwChanged: L("Password updated.", "Kata sandi diperbarui."),
+  pwHint: L("At least 8 characters, with a letter and a number.", "Minimal 8 karakter, dengan huruf dan angka."),
+  showPw: L("Show password", "Tampilkan kata sandi"), hidePw: L("Hide password", "Sembunyikan kata sandi"),
+  deleteAccount: L("Delete account", "Hapus akun"),
+  deleteMsg: L("This removes your account, saved places, plan and photo from this device. This cannot be undone.", "Ini menghapus akun, tempat tersimpan, rencana, dan foto dari perangkat ini. Tindakan ini tidak dapat dibatalkan."),
+  errLocked: (s: number) => L(`Too many attempts. Try again in ${s}s.`, `Terlalu banyak percobaan. Coba lagi dalam ${s} dtk.`),
+  localNote: L("Accounts are stored on this device only.", "Akun disimpan hanya di perangkat ini."),
 };
 
 const KIND: Record<string, L> = {
@@ -497,6 +529,15 @@ ITEMS.forEach(item => {
   if (url) item.image = { uri: url };
 });
 
+// Foto Wikimedia Commons bisa diminta dalam ukuran lebih kecil: hemat data & lebih cepat untuk thumbnail.
+const _sizedCache: Record<string, ImageSourcePropType> = {};
+const sized = (src: ImageSourcePropType, w: number): ImageSourcePropType => {
+  const uri = (src as any)?.uri as string | undefined;
+  if (!uri || !uri.includes("width=1200")) return src;
+  const k = `${uri}|${w}`;
+  return (_sizedCache[k] ??= { uri: uri.replace("width=1200", `width=${w}`) });
+};
+
 const byId: Record<string, Item> = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 const MAPPED = ITEMS.filter(i => GEO[i.id]);
 const videoUrl = (i: Item) => VIDEO[i.id] ?? ytSearch(VQ[i.id] ?? `${i.title.en} Ubud Bali`);
@@ -518,8 +559,8 @@ const openRoute = (stops: Item[]) => {
 };
 
 const kindColor = (k: string) => ({
-  nature: "#2F6B4F", temple: "#8A5A9E", culture: "#A98763",
-  food: "#C47A32", handicraft: "#3E668C", fashion: "#3E668C",
+  nature: C.olive, temple: C.burgundy, culture: C.mustard,
+  food: C.ink, handicraft: C.green, fashion: C.green,
 } as Record<string, string>)[k] ?? C.green;
 const kindIcon = (k: string) => ({ nature: "tree", culture: "bank", temple: "temple-hindu", handicraft: "palette", fashion: "tshirt-crew", food: "silverware-fork-knife" } as Record<string, string>)[k] ?? "map-marker";
 
@@ -671,7 +712,7 @@ const QUIZZES: Record<string, Quiz> = {
 };
 
 /* ───────────────────────── Storage, auth, memory ───────────────────────── */
-type User = { id: string; name: string; email: string; hash: string };
+type User = { id: string; name: string; email: string; hash: string; salt?: string; iter?: number; created?: number };
 type UserData = {
   saved: string[]; recent: string[]; searches: string[]; visited: string[];
   quiz: Record<string, number>; joinedCleanup: boolean;
@@ -681,12 +722,124 @@ const EMPTY: UserData = { saved: [], recent: [], searches: [], visited: [], quiz
 const K = {
   users: "routeubud:users", session: "routeubud:session", lang: "routeubud:lang", suggest: "routeubud:suggestions",
   data: (id: string) => `routeubud:data:${id}`,
+  avatar: (id: string) => `routeubud:avatar:${id}`,
+  lock: (email: string) => `routeubud:lock:${email}`,
 };
 async function readJSON<T>(key: string, fallback: T): Promise<T> {
   try { const v = await AsyncStorage.getItem(key); return v ? (JSON.parse(v) as T) : fallback; } catch { return fallback; }
 }
-const hashPw = (email: string, pw: string) =>
+/* ── Sistem akun (lokal di perangkat) ──
+   Kata sandi di-hash dengan salt acak + iterasi SHA-256; akun lama (hash tanpa salt) otomatis di-upgrade saat login berikutnya.
+   Percobaan salah 5x mengunci login 60 detik. Semua data tersimpan di AsyncStorage perangkat ini:
+   untuk login lintas perangkat / lupa kata sandi lewat email, ganti objek `authApi` dengan backend (Firebase, Supabase, dsb). */
+const ITER = 500;
+const okPw = (pw: string) => pw.length >= 8 && /[A-Za-z]/.test(pw) && /\d/.test(pw);
+const legacyHash = (email: string, pw: string) =>
   Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `routeubud|${email}|${pw}`);
+const randomHex = async (n = 16) => {
+  const b = await Crypto.getRandomBytesAsync(n);
+  return Array.from(b as Uint8Array).map(x => x.toString(16).padStart(2, "0")).join("");
+};
+async function derive(pw: string, salt: string, iter = ITER) {
+  let h = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${salt}|${pw}`);
+  for (let i = 1; i < iter; i++) h = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, `${h}|${salt}`);
+  return h;
+}
+const verifyPw = async (u: User, pw: string) =>
+  u.salt ? (await derive(pw, u.salt, u.iter ?? ITER)) === u.hash : (await legacyHash(u.email, pw)) === u.hash;
+
+const authApi = {
+  async register(name: string, email: string, pw: string): Promise<User> {
+    const users = await readJSON<Record<string, User>>(K.users, {});
+    if (users[email]) throw new Error("exists");
+    const salt = await randomHex();
+    const u: User = { id: `u_${Date.now().toString(36)}${salt.slice(0, 4)}`, name, email, hash: await derive(pw, salt), salt, iter: ITER, created: Date.now() };
+    users[email] = u;
+    for (const key of [K.data, K.avatar]) { // bawa data tamu ke akun baru
+      const g = await AsyncStorage.getItem(key("guest"));
+      if (g) { await AsyncStorage.setItem(key(u.id), g); await AsyncStorage.removeItem(key("guest")); }
+    }
+    await AsyncStorage.setItem(K.users, JSON.stringify(users));
+    await AsyncStorage.setItem(K.session, email);
+    return u;
+  },
+  async login(email: string, pw: string): Promise<User> {
+    const lock = await readJSON<{ n: number; until: number }>(K.lock(email), { n: 0, until: 0 });
+    if (lock.until > Date.now()) throw new Error(`locked:${Math.ceil((lock.until - Date.now()) / 1000)}`);
+    const users = await readJSON<Record<string, User>>(K.users, {});
+    let u = users[email];
+    if (!u || !(await verifyPw(u, pw))) {
+      const n = lock.n + 1;
+      await AsyncStorage.setItem(K.lock(email), JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 60000 } : { n, until: 0 }));
+      throw new Error(n >= 5 ? "locked:60" : "bad");
+    }
+    await AsyncStorage.removeItem(K.lock(email));
+    if (!u.salt) { // upgrade hash lama
+      const salt = await randomHex();
+      u = { ...u, salt, iter: ITER, hash: await derive(pw, salt) };
+      users[email] = u;
+      await AsyncStorage.setItem(K.users, JSON.stringify(users));
+    }
+    await AsyncStorage.setItem(K.session, email);
+    return u;
+  },
+  async updateName(user: User, name: string): Promise<User> {
+    const users = await readJSON<Record<string, User>>(K.users, {});
+    const u = { ...(users[user.email] ?? user), name };
+    users[user.email] = u;
+    await AsyncStorage.setItem(K.users, JSON.stringify(users));
+    return u;
+  },
+  async changePassword(user: User, current: string, next: string): Promise<User> {
+    const users = await readJSON<Record<string, User>>(K.users, {});
+    const stored = users[user.email];
+    if (!stored || !(await verifyPw(stored, current))) throw new Error("current");
+    const salt = await randomHex();
+    const u: User = { ...stored, salt, iter: ITER, hash: await derive(next, salt) };
+    users[user.email] = u;
+    await AsyncStorage.setItem(K.users, JSON.stringify(users));
+    return u;
+  },
+  async remove(user: User) {
+    const users = await readJSON<Record<string, User>>(K.users, {});
+    delete users[user.email];
+    await AsyncStorage.setItem(K.users, JSON.stringify(users));
+    await Promise.all([K.data(user.id), K.avatar(user.id), K.lock(user.email), K.session].map(k => AsyncStorage.removeItem(k)));
+  },
+};
+
+/* ── Foto profil: pilih/ambil foto, kecilkan, simpan sebagai data URI (aman untuk AsyncStorage & web) ── */
+const shrinkWeb = (srcUri: string, size = 384) => new Promise<string>((resolve, reject) => {
+  const g: any = globalThis; const img = new g.Image();
+  img.onload = () => {
+    const s = Math.min(size / img.width, size / img.height, 1);
+    const c = g.document.createElement("canvas");
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    resolve(c.toDataURL("image/jpeg", 0.8));
+  };
+  img.onerror = reject; img.src = srcUri;
+});
+async function pickAvatar(camera: boolean): Promise<string | null> {
+  if (!ImagePicker) throw new Error("pkg");
+  const perm = camera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (Platform.OS !== "web" && !perm.granted) throw new Error("perm");
+  const opts: any = {
+    mediaTypes: ImagePicker.MediaType ? ["images"] : ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true, aspect: [1, 1], quality: Manipulator ? 0.8 : 0.2, base64: Platform.OS !== "web" && !Manipulator,
+  };
+  const res = camera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
+  if (res.canceled || !res.assets?.[0]) return null;
+  const a = res.assets[0];
+  let out: string | null = null;
+  if (Platform.OS === "web") out = await shrinkWeb(a.uri);
+  else if (Manipulator) {
+    const r = await Manipulator.manipulateAsync(a.uri, [{ resize: { width: 384 } }], { compress: 0.7, format: Manipulator.SaveFormat.JPEG, base64: true });
+    out = `data:image/jpeg;base64,${r.base64}`;
+  } else if (a.base64) out = `data:${a.mimeType ?? "image/jpeg"};base64,${a.base64}`;
+  if (out && out.length > 1_200_000) throw new Error("big");
+  return out;
+}
 
 const GUEST: User = { id: "guest", name: "Traveler", email: "", hash: "" };
 
@@ -757,7 +910,7 @@ function PrimaryButton({ label, onPress, icon, tone = "green", outline = false }
 
 function Bookmark({ on, onPress, floating = false }: { on: boolean; onPress: () => void; floating?: boolean }) {
   return (
-    <Pressable onPress={onPress} hitSlop={8} style={floating ? { position: "absolute", top: 10, right: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(242,236,226,.92)", alignItems: "center", justifyContent: "center" } : undefined}>
+    <Pressable onPress={onPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={on ? "Remove bookmark" : "Save"} style={floating ? { position: "absolute", top: 10, right: 10, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(217,204,190,.94)", alignItems: "center", justifyContent: "center" } : undefined}>
       <Icon name={on ? "bookmark" : "bookmark-outline"} size={22} color={on ? C.burgundy : floating ? C.ink : C.muted} />
     </Pressable>
   );
@@ -774,7 +927,7 @@ function Header({ title, sub, onBack, color, icon }: { title: string; sub: strin
       )}
       {color ? (
         <View style={{ backgroundColor: color, borderRadius: 24, padding: 18, flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(255,255,255,.16)", alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(199,182,166,.18)", alignItems: "center", justifyContent: "center" }}>
             <Icon name={icon ?? "map-marker"} size={32} color={fg} />
           </View>
           <View style={{ flex: 1 }}>
@@ -796,8 +949,8 @@ function OverlayCard({ item, saved, onOpen, onSave, width }: { item: Item; saved
   const { t } = useT();
   return (
     <Pressable onPress={onOpen} style={{ width: width ?? "100%", marginRight: width ? 12 : 0, marginBottom: width ? 0 : 14, borderRadius: 20, overflow: "hidden", backgroundColor: C.sage }}>
-      <BgImage source={item.image} style={{ height: width ? 130 : 156, justifyContent: "flex-end" }}>
-        <View style={{ backgroundColor: "rgba(20,28,44,.55)", padding: 12 }}>
+      <BgImage source={sized(item.image, width ? 480 : 800)} style={{ height: width ? 130 : 156, justifyContent: "flex-end" }}>
+        <View style={{ backgroundColor: "rgba(14,20,16,.58)", padding: 12 }}>
           <Text style={{ fontFamily: SERIF, color: C.white, fontWeight: "700", fontSize: width ? 14 : 17 }} numberOfLines={1}>{t(item.title)}</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
             {item.rating ? <Icon name="star" size={13} color={C.star} /> : null}
@@ -817,7 +970,7 @@ function StoryCard({ item, saved, onOpen, onSave }: { item: Item; saved: boolean
   return (
     <Pressable onPress={onOpen} style={{ backgroundColor: C.paper, borderRadius: 20, overflow: "hidden", borderWidth: 1, borderColor: C.line, marginBottom: 14 }}>
       <View>
-        <Image source={item.image} style={{ height: 150, width: "100%", backgroundColor: C.sage }} />
+        <Image source={sized(item.image, 800)} style={{ height: 150, width: "100%", backgroundColor: C.sage }} />
         <Bookmark on={saved} onPress={onSave} floating />
       </View>
       <View style={{ padding: 14 }}>
@@ -833,7 +986,7 @@ function ItemRow({ item, saved, onOpen, onSave }: { item: Item; saved: boolean; 
   const { t } = useT();
   return (
     <Pressable onPress={onOpen} style={{ flexDirection: "row", backgroundColor: C.paper, borderRadius: 16, overflow: "hidden", borderWidth: 1, borderColor: C.line, marginBottom: 12 }}>
-      <Image source={item.image} style={{ width: 92, height: 92, backgroundColor: C.sage }} />
+      <Image source={sized(item.image, 320)} style={{ width: 92, height: 92, backgroundColor: C.sage }} />
       <View style={{ flex: 1, padding: 12, justifyContent: "center" }}>
         <Text style={{ fontSize: 12, color: INK[item.cat], fontWeight: "700" }}>{t(KIND[item.kind])}</Text>
         <Text style={{ fontFamily: SERIF, fontSize: 16, color: C.ink, fontWeight: "700", marginTop: 3 }} numberOfLines={2}>{t(item.title)}</Text>
@@ -922,7 +1075,7 @@ function QuizCard({ id, color, best, onStart }: { id: string; color: string; bes
   return (
     <Pressable onPress={onStart} style={{ flexDirection: "row", alignItems: "center", gap: 14, backgroundColor: C.goldSoft, borderRadius: 20, padding: 18, marginTop: 6, marginBottom: 8 }}>
       <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
-        <Icon name="school" size={26} color={C.white} />
+        <Icon name="school" size={26} color={onColor(color)} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: SERIF, fontSize: 17, color: C.ink, fontWeight: "700" }}>{t(q.title)}</Text>
@@ -1037,18 +1190,18 @@ function MapScreen({ filter, setFilter, plan, planDay, setPlanDay, focus, onOpen
 
   if (!RNMaps) {
     const mapPoints = shown.map((i, n) => ({
-      id: i.id, name: i.title.en, kind: KIND[i.kind]?.en ?? i.kind, color: kindColor(i.kind),
-      lat: GEO[i.id].lat, lng: GEO[i.id].lng, image: (i.image as any)?.uri ?? "",
+      id: i.id, name: i.title.en, kind: KIND[i.kind]?.en ?? i.kind, color: kindColor(i.kind), fg: onColor(kindColor(i.kind)),
+      lat: GEO[i.id].lat, lng: GEO[i.id].lng, image: (sized(i.image, 400) as any)?.uri ?? "",
       order: n + 1, approx: !!GEO[i.id].approx,
     }));
     const routePoints = filter === "plan" ? planItems.map(i => [GEO[i.id].lat, GEO[i.id].lng]) : [];
-    const mapHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#e7dfd2}.leaflet-popup-content-wrapper{border-radius:12px}.leaflet-popup-content{margin:10px;font:13px Arial}.pin{border:2px solid #E7DFD2;border-radius:50%;width:30px;height:30px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 7px #3338}.leaflet-control-attribution{font-size:9px}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
+    const mapHtml = `<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#C7B6A6}.leaflet-popup-content-wrapper{border-radius:12px}.leaflet-popup-content{margin:10px;font:13px Arial}.pin{border:2px solid #C7B6A6;border-radius:50%;width:30px;height:30px;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;box-shadow:0 2px 7px #3338}.leaflet-control-attribution{font-size:9px}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
       const points=${JSON.stringify(mapPoints)}; const route=${JSON.stringify(routePoints)};
       const map=L.map('map',{scrollWheelZoom:true}).setView([-8.5069,115.2625],13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
       const bounds=[];
-      points.forEach(p=>{const marker=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div class="pin" style="background:'+p.color+'">'+( ${JSON.stringify(filter)}==='plan'?p.order:'•')+'</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map);
-      marker.bindPopup('<div style="width:190px"><img src="'+p.image+'" style="width:100%;height:95px;object-fit:cover;border-radius:8px" onerror="this.remove()"><b>'+p.name+'</b><div style="color:#6B6257;margin-top:3px">'+p.kind+(p.approx?' · approximate pin':'')+'</div><a target="_blank" href="https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng+'">Open in Google Maps</a></div>'); bounds.push([p.lat,p.lng]);});
+      points.forEach(p=>{const marker=L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:'<div class="pin" style="background:'+p.color+';color:'+p.fg+'">'+( ${JSON.stringify(filter)}==='plan'?p.order:'•')+'</div>',iconSize:[30,30],iconAnchor:[15,15]})}).addTo(map);
+      marker.bindPopup('<div style="width:190px"><img src="'+p.image+'" style="width:100%;height:95px;object-fit:cover;border-radius:8px" onerror="this.remove()"><b>'+p.name+'</b><div style="color:#4A4138;margin-top:3px">'+p.kind+(p.approx?' · approximate pin':'')+'</div><a target="_blank" href="https://www.google.com/maps/search/?api=1&query='+p.lat+','+p.lng+'">Open in Google Maps</a></div>'); bounds.push([p.lat,p.lng]);});
       if(route.length>1)L.polyline(route,{color:'#4B2328',weight:4,opacity:.8}).addTo(map);
       if(bounds.length>1)map.fitBounds(bounds,{padding:[28,28]});else if(bounds.length===1)map.setView(bounds[0],15);
     </script></body></html>`;
@@ -1093,8 +1246,8 @@ function MapScreen({ filter, setFilter, plan, planDay, setPlanDay, focus, onOpen
               <Marker key={i.id} coordinate={{ latitude: GEO[i.id].lat, longitude: GEO[i.id].lng }} onPress={(e: any) => { e?.stopPropagation?.(); setSel(i.id); }}>
                 <View style={{ width: s, height: s, borderRadius: s / 2, backgroundColor: kindColor(i.kind), borderWidth: 2, borderColor: C.cream, alignItems: "center", justifyContent: "center" }}>
                   {filter === "plan"
-                    ? <Text style={{ color: C.white, fontWeight: "800" }}>{n + 1}</Text>
-                    : <Icon name={kindIcon(i.kind)} size={on ? 22 : 18} color={C.white} />}
+                    ? <Text style={{ color: onColor(kindColor(i.kind)), fontWeight: "800" }}>{n + 1}</Text>
+                    : <Icon name={kindIcon(i.kind)} size={on ? 22 : 18} color={onColor(kindColor(i.kind))} />}
                 </View>
               </Marker>
             );
@@ -1108,7 +1261,7 @@ function MapScreen({ filter, setFilter, plan, planDay, setPlanDay, focus, onOpen
         {selItem && g && (
           <View style={{ ...SOFT, position: "absolute", left: 16, right: 16, bottom: 16, backgroundColor: C.paper, borderRadius: 20, padding: 14, borderWidth: 1, borderColor: C.line }}>
             <View style={{ flexDirection: "row", gap: 12 }}>
-              <Image source={selItem.image} style={{ width: 72, height: 72, borderRadius: 14, backgroundColor: C.sage }} />
+              <Image source={sized(selItem.image, 240)} style={{ width: 72, height: 72, borderRadius: 14, backgroundColor: C.sage }} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 12, fontWeight: "700", color: kindColor(selItem.kind) }}>{t(KIND[selItem.kind])}</Text>
                 <Text style={{ fontFamily: SERIF, fontSize: 17, color: C.ink, fontWeight: "700", marginTop: 2 }} numberOfLines={2}>{t(selItem.title)}</Text>
@@ -1128,6 +1281,114 @@ function MapScreen({ filter, setFilter, plan, planDay, setPlanDay, focus, onOpen
   );
 }
 
+/* ───────────────────────── Akun: avatar, kolom sandi, edit profil ───────────────────────── */
+function Avatar({ uri, name, size = 88 }: { uri?: string | null; name: string; size?: number }) {
+  const common = { width: size, height: size, borderRadius: size / 2, borderWidth: size > 60 ? 3 : 1.5, borderColor: C.sage2 } as const;
+  if (uri) return <Image source={{ uri }} style={{ ...common, backgroundColor: C.sage }} />;
+  return (
+    <View style={{ ...common, backgroundColor: C.burgundy, alignItems: "center", justifyContent: "center" }}>
+      <Text style={{ fontFamily: SERIF, fontSize: size * 0.43, color: C.white, fontWeight: "700" }}>{(name.trim().charAt(0) || "T").toUpperCase()}</Text>
+    </View>
+  );
+}
+
+const fieldStyle = { backgroundColor: C.paper, borderRadius: 14, padding: 15, fontSize: 15, color: C.ink, marginTop: 12, borderWidth: 1, borderColor: C.line } as const;
+
+function PwField({ value, onChange, placeholder, onSubmit }: { value: string; onChange: (v: string) => void; placeholder: string; onSubmit?: () => void }) {
+  const { t } = useT();
+  const [show, setShow] = useState(false);
+  return (
+    <View style={{ ...fieldStyle, padding: 0, flexDirection: "row", alignItems: "center" }}>
+      <TextInput value={value} onChangeText={onChange} onSubmitEditing={onSubmit} placeholder={placeholder} placeholderTextColor={C.muted}
+        secureTextEntry={!show} autoCapitalize="none" autoCorrect={false} style={{ flex: 1, padding: 15, fontSize: 15, color: C.ink }} />
+      <Pressable onPress={() => setShow(s => !s)} hitSlop={10} accessibilityLabel={t(show ? S.hidePw : S.showPw)} style={{ paddingHorizontal: 14 }}>
+        <Icon name={show ? "eye-off-outline" : "eye-outline"} size={22} color={C.muted} />
+      </Pressable>
+    </View>
+  );
+}
+
+function EditProfileSheet({ user, avatar, isGuest, onPhoto, onName, onClose }: {
+  user: User; avatar: string | null; isGuest: boolean; onPhoto: (uri: string | null) => Promise<void>; onName: (n: string) => Promise<void>; onClose: () => void;
+}) {
+  const { t } = useT();
+  const [name, setName] = useState(user.name);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const run = async (camera: boolean) => {
+    setBusy(true); setMsg("");
+    try { const uri = await pickAvatar(camera); if (uri) await onPhoto(uri); }
+    catch (e: any) { Alert.alert(t(e?.message === "pkg" ? S.photoPkg : e?.message === "perm" ? S.photoPerm : S.photoErr)); }
+    finally { setBusy(false); }
+  };
+  const saveName = async () => {
+    const n = name.trim();
+    if (!n) return setMsg(t(S.errName));
+    await onName(n); setMsg(t(S.nameSaved));
+  };
+  return (
+    <Sheet title={t(S.editProfile)} onClose={onClose}>
+      <View style={{ alignItems: "center", marginBottom: 20 }}>
+        <Avatar uri={avatar} name={name} size={120} />
+        {busy && <ActivityIndicator color={C.green} style={{ marginTop: 12 }} />}
+      </View>
+      <View style={{ gap: 10 }}>
+        <PrimaryButton label={t(S.choosePhoto)} icon="image-outline" onPress={() => run(false)} />
+        {Platform.OS !== "web" && <PrimaryButton outline label={t(S.takePhoto)} icon="camera-outline" onPress={() => run(true)} />}
+        {avatar && <PrimaryButton outline tone="red" label={t(S.removePhoto)} icon="trash-can-outline" onPress={() => onPhoto(null)} />}
+      </View>
+      {!isGuest && (
+        <View style={{ marginTop: 22 }}>
+          <Text style={{ fontWeight: "700", color: C.ink }}>{t(S.displayName)}</Text>
+          <TextInput value={name} onChangeText={setName} placeholder={t(S.name)} placeholderTextColor={C.muted} style={fieldStyle} />
+          <Text style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{user.email}</Text>
+          <View style={{ marginTop: 14 }}><PrimaryButton label={t(S.saveChanges)} onPress={saveName} /></View>
+        </View>
+      )}
+      {msg ? <Text style={{ color: C.green2, marginTop: 12, fontWeight: "600" }}>{msg}</Text> : null}
+    </Sheet>
+  );
+}
+
+function PasswordSheet({ onSubmit, onClose }: { onSubmit: (cur: string, next: string) => Promise<void>; onClose: () => void }) {
+  const { t } = useT();
+  const [cur, setCur] = useState(""); const [next, setNext] = useState(""); const [next2, setNext2] = useState("");
+  const [err, setErr] = useState(""); const [ok, setOk] = useState(false); const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setErr("");
+    if (!okPw(next)) return setErr(t(S.errPw8));
+    if (next !== next2) return setErr(t(S.errConfirm));
+    setBusy(true);
+    try { await onSubmit(cur, next); setOk(true); setCur(""); setNext(""); setNext2(""); }
+    catch (e: any) { setErr(t(e?.message === "current" ? S.errCurrent : S.errBad)); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Sheet title={t(S.changePassword)} onClose={onClose}>
+      <PwField value={cur} onChange={setCur} placeholder={t(S.currentPw)} />
+      <PwField value={next} onChange={setNext} placeholder={t(S.newPw)} />
+      <PwField value={next2} onChange={setNext2} placeholder={t(S.confirmPw)} onSubmit={submit} />
+      <Text style={{ color: C.muted, fontSize: 12, marginTop: 10 }}>{t(S.pwHint)}</Text>
+      {err ? <Text style={{ color: C.red, marginTop: 10, fontSize: 13 }}>{err}</Text> : null}
+      {ok ? <Text style={{ color: C.green2, marginTop: 10, fontWeight: "700" }}>{t(S.pwChanged)}</Text> : null}
+      <View style={{ marginTop: 18 }}>{busy ? <ActivityIndicator color={C.green} /> : <PrimaryButton label={t(S.saveChanges)} onPress={submit} />}</View>
+    </Sheet>
+  );
+}
+
+/* Grid responsif: 1 kolom di ponsel, 2–3 kolom di tablet/desktop */
+function Grid({ children }: { children: React.ReactNode }) {
+  const { width } = useWindowDimensions();
+  const cols = width >= 1100 ? 3 : width >= 720 ? 2 : 1;
+  const kids = React.Children.toArray(children);
+  if (cols === 1) return <>{kids}</>;
+  return (
+    <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 }}>
+      {kids.map((k, n) => <View key={n} style={{ width: `${100 / cols}%`, paddingHorizontal: 6 }}>{k}</View>)}
+    </View>
+  );
+}
+
 /* ───────────────────────── Splash, language, auth ───────────────────────── */
 function SplashScreen() {
   const { t } = useT();
@@ -1135,7 +1396,7 @@ function SplashScreen() {
     <View style={{ flex: 1, backgroundColor: C.green }}>
       <StatusBar barStyle="light-content" />
       <BgImage source={{ uri: IMG.terrace }} style={{ flex: 1 }}>
-        <View style={{ flex: 1, backgroundColor: "rgba(30,47,37,.62)", alignItems: "center", justifyContent: "center", paddingHorizontal: 30 }}>
+        <View style={{ flex: 1, backgroundColor: "rgba(14,51,37,.72)", alignItems: "center", justifyContent: "center", paddingHorizontal: 30 }}>
           <Logo size={96} color={C.cream} />
           <Text style={{ fontFamily: SERIF, fontSize: 44, color: C.cream, fontWeight: "700", marginTop: 8 }}>RouteUbud</Text>
           <Text style={{ fontFamily: SERIF, fontStyle: "italic", fontSize: 16, color: C.cream, textAlign: "center", marginTop: 10, lineHeight: 23 }}>{t(S.tagline)}</Text>
@@ -1183,52 +1444,57 @@ function LanguageScreen({ initial, onDone }: { initial: Lang; onDone: (l: Lang) 
 function AuthScreen({ onAuthed, onGuest }: { onAuthed: (u: User) => void; onGuest: () => void }) {
   const { t } = useT();
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [name, setName] = useState(""); const [email, setEmail] = useState(""); const [pw, setPw] = useState("");
+  const [name, setName] = useState(""); const [email, setEmail] = useState("");
+  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
 
+  const errText = (e: any) => {
+    const m = String(e?.message ?? "");
+    if (m === "exists") return t(S.errExists);
+    if (m.startsWith("locked:")) return t(S.errLocked(Number(m.split(":")[1])));
+    return t(S.errBad);
+  };
   const submit = async () => {
+    if (busy) return;
     setErr("");
     const e = email.trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(e)) return setErr(t(S.errEmail));
-    if (pw.length < 6) return setErr(t(S.errPw));
-    if (mode === "register" && !name.trim()) return setErr(t(S.errName));
+    if (mode === "register") {
+      if (!name.trim()) return setErr(t(S.errName));
+      if (!okPw(pw)) return setErr(t(S.errPw8));
+      if (pw !== pw2) return setErr(t(S.errConfirm));
+    } else if (!pw) return setErr(t(S.errBad));
     setBusy(true);
     try {
-      const users = await readJSON<Record<string, User>>(K.users, {});
-      const hash = await hashPw(e, pw);
-      if (mode === "register") {
-        if (users[e]) return setErr(t(S.errExists));
-        const u: User = { id: `u_${Date.now().toString(36)}`, name: name.trim(), email: e, hash };
-        users[e] = u;
-        const g = await AsyncStorage.getItem(K.data("guest"));
-        if (g) { await AsyncStorage.setItem(K.data(u.id), g); await AsyncStorage.removeItem(K.data("guest")); }
-        await AsyncStorage.setItem(K.users, JSON.stringify(users));
-        await AsyncStorage.setItem(K.session, e);
-        onAuthed(u);
-      } else {
-        const u = users[e];
-        if (!u || u.hash !== hash) return setErr(t(S.errBad));
-        await AsyncStorage.setItem(K.session, e);
-        onAuthed(u);
-      }
-    } finally { setBusy(false); }
+      const u = mode === "register" ? await authApi.register(name.trim(), e, pw) : await authApi.login(e, pw);
+      onAuthed(u);
+    } catch (x) { setErr(errText(x)); setBusy(false); }
   };
 
-  const field = { backgroundColor: C.paper, borderRadius: 14, padding: 15, fontSize: 15, color: C.ink, marginTop: 12, borderWidth: 1, borderColor: C.line } as const;
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: C.cream, paddingTop: TOP }}>
       <StatusBar barStyle="dark-content" />
       <Icon name="flower" size={220} color={C.sage} style={{ position: "absolute", top: -60, right: -70, opacity: 0.5 }} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 26 }} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 26, width: "100%", maxWidth: 480, alignSelf: "center" }} keyboardShouldPersistTaps="handled">
           <Logo size={56} />
-          <Text style={{ fontFamily: SERIF, fontSize: 34, color: C.ink, fontWeight: "700", marginTop: 12 }}>RouteUbud</Text>
+          <Text style={{ fontFamily: SERIF, fontSize: 34, color: C.green, fontWeight: "700", marginTop: 12 }}>RouteUbud</Text>
           <Text style={{ fontFamily: SERIF, fontStyle: "italic", color: C.muted, marginTop: 4 }}>{t(S.motto)}</Text>
-          <Text style={{ fontFamily: SERIF, fontSize: 22, color: C.ink, fontWeight: "700", marginTop: 28 }}>{t(mode === "login" ? S.loginTitle : S.registerTitle)}</Text>
-          {mode === "register" && <TextInput value={name} onChangeText={setName} placeholder={t(S.name)} placeholderTextColor={C.muted} style={field} />}
-          <TextInput value={email} onChangeText={setEmail} placeholder={t(S.email)} placeholderTextColor={C.muted} autoCapitalize="none" keyboardType="email-address" style={field} />
-          <TextInput value={pw} onChangeText={setPw} placeholder={t(S.password)} placeholderTextColor={C.muted} secureTextEntry style={field} />
-          {err ? <Text style={{ color: C.red, marginTop: 10, fontSize: 13 }}>{err}</Text> : null}
+          <View style={{ flexDirection: "row", marginTop: 26 }}>
+            <Pill label={t(S.login)} on={mode === "login"} onPress={() => { setMode("login"); setErr(""); }} />
+            <Pill label={t(S.register)} on={mode === "register"} onPress={() => { setMode("register"); setErr(""); }} />
+          </View>
+          <Text style={{ fontFamily: SERIF, fontSize: 22, color: C.ink, fontWeight: "700", marginTop: 14 }}>{t(mode === "login" ? S.loginTitle : S.registerTitle)}</Text>
+          {mode === "register" && <TextInput value={name} onChangeText={setName} placeholder={t(S.name)} placeholderTextColor={C.muted} autoComplete="name" style={fieldStyle} />}
+          <TextInput value={email} onChangeText={setEmail} placeholder={t(S.email)} placeholderTextColor={C.muted} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" style={fieldStyle} />
+          <PwField value={pw} onChange={setPw} placeholder={t(S.password)} onSubmit={mode === "login" ? submit : undefined} />
+          {mode === "register" && (
+            <>
+              <PwField value={pw2} onChange={setPw2} placeholder={t(S.confirmPw)} onSubmit={submit} />
+              <Text style={{ color: C.muted, fontSize: 12, marginTop: 8 }}>{t(S.pwHint)}</Text>
+            </>
+          )}
+          {err ? <Text style={{ color: C.red, marginTop: 10, fontSize: 13, fontWeight: "600" }}>{err}</Text> : null}
           <View style={{ marginTop: 18 }}>
             {busy ? <ActivityIndicator color={C.green} /> : <PrimaryButton label={t(mode === "login" ? S.login : S.register)} onPress={submit} />}
           </View>
@@ -1238,6 +1504,7 @@ function AuthScreen({ onAuthed, onGuest }: { onAuthed: (u: User) => void; onGues
           <View style={{ marginTop: 22, paddingTop: 20, borderTopWidth: 1, borderTopColor: C.line }}>
             <PrimaryButton outline label={t(S.guest)} icon="account-outline" onPress={onGuest} />
             <Text style={{ color: C.muted, fontSize: 13, lineHeight: 19, textAlign: "center", marginTop: 10 }}>{t(S.guestNote)}</Text>
+            <Text style={{ color: C.muted, fontSize: 12, textAlign: "center", marginTop: 6 }}>{t(S.localNote)}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1248,7 +1515,7 @@ function AuthScreen({ onAuthed, onGuest }: { onAuthed: (u: User) => void; onGues
 /* ───────────────────────── Main app ───────────────────────── */
 type Phase = "splash" | "lang" | "auth" | "app";
 type Screen = "home" | "explore" | "culture" | "wear" | "umkm" | "act" | "map" | "plan" | "saved" | "profile";
-type SheetKey = "trips" | "badges" | "settings" | "help" | "about" | "more" | "suggest" | null;
+type SheetKey = "trips" | "badges" | "settings" | "help" | "about" | "more" | "suggest" | "editProfile" | "password" | null;
 
 export default function App() {
   const { width: viewportWidth } = useWindowDimensions();
@@ -1271,6 +1538,8 @@ export default function App() {
   const [mapFilter, setMapFilter] = useState("all");
   const [mapFocus, setMapFocus] = useState<string | null>(null);
   const [planDay, setPlanDay] = useState(0);
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const skipSave = useRef(false);
   const scroller = useRef<ScrollView>(null);
 
   const t = useCallback((l: L) => l[lang], [lang]);
@@ -1282,6 +1551,7 @@ export default function App() {
     const d = await readJSON<UserData>(K.data(u.id), EMPTY);
     setData({ ...EMPTY, ...d, plan: d.plan?.length ? d.plan : [[]] });
     setPlanDay(0);
+    setAvatar(await AsyncStorage.getItem(K.avatar(u.id)).catch(() => null));
     setUser(u);
     setLoaded(true);
   };
@@ -1294,20 +1564,50 @@ export default function App() {
       else if (email) { const users = await readJSON<Record<string, User>>(K.users, {}); u = users[email] ?? null; }
       if (l === "en" || l === "id") setLangState(l);
       if (u) await loadUser(u);
-      await new Promise(r => setTimeout(r, 2200));
+      await new Promise(r => setTimeout(r, 1200));
       setPhase(!l ? "lang" : u ? "app" : "auth");
     })();
   }, []);
 
+  // Simpan data pengguna dengan debounce supaya tidak menulis ke storage di setiap ketukan.
   useEffect(() => {
-    if (user && loaded) AsyncStorage.setItem(K.data(user.id), JSON.stringify(data)).catch(() => {});
+    if (!user || !loaded) return;
+    const id = setTimeout(() => AsyncStorage.setItem(K.data(user.id), JSON.stringify(data)).catch(() => {}), 350);
+    return () => clearTimeout(id);
   }, [data, user, loaded]);
 
+  // Web: judul tab & warna browser sesuai brand.
+  useEffect(() => {
+    const doc = (globalThis as any).document;
+    if (Platform.OS !== "web" || !doc) return;
+    doc.title = "RouteUbud — Explore the Culture, Preserve the Future";
+    let m = doc.querySelector('meta[name="theme-color"]');
+    if (!m) { m = doc.createElement("meta"); m.setAttribute("name", "theme-color"); doc.head.appendChild(m); }
+    m.setAttribute("content", C.green);
+  }, []);
+
   const logout = async () => {
+    if (user && loaded && !skipSave.current) await AsyncStorage.setItem(K.data(user.id), JSON.stringify(data)).catch(() => {});
+    skipSave.current = false;
     await AsyncStorage.removeItem(K.session);
+    setAvatar(null);
     setUser(null); setLoaded(false); setData(EMPTY); setScreen("home"); setActive(null); setSheet(null); setQuery(""); setPlanDay(0);
     setPhase("auth");
   };
+
+  const setPhoto = async (uri: string | null) => {
+    if (!user) return;
+    try {
+      if (uri) await AsyncStorage.setItem(K.avatar(user.id), uri); else await AsyncStorage.removeItem(K.avatar(user.id));
+      setAvatar(uri);
+    } catch { Alert.alert(t(S.photoErr)); }
+  };
+  const saveName = async (name: string) => { if (user && user.id !== "guest") setUser(await authApi.updateName(user, name)); };
+  const changePw = async (cur: string, next: string) => { if (user && user.id !== "guest") setUser(await authApi.changePassword(user, cur, next)); };
+  const deleteAccount = () => Alert.alert(t(S.deleteAccount), t(S.deleteMsg), [
+    { text: t(S.cancel), style: "cancel" },
+    { text: t(S.deleteAccount), style: "destructive", onPress: async () => { if (user) await authApi.remove(user); skipSave.current = true; await logout(); } },
+  ]);
 
   const toggleSave = useCallback((id: string) =>
     setData(d => ({ ...d, saved: d.saved.includes(id) ? d.saved.filter(x => x !== id) : [id, ...d.saved] })), []);
@@ -1362,6 +1662,9 @@ export default function App() {
   };
 
   const matches = (i: Item) => `${t(i.title)} ${t(i.loc)} ${t(KIND[i.kind])} ${t(i.body)}`.toLowerCase().includes(query.trim().toLowerCase());
+  const dq = useDeferredValue(query);
+  const hay = useMemo(() => ITEMS.map(i => ({ i, s: `${i.title[lang]} ${i.loc[lang]} ${KIND[i.kind][lang]} ${i.body[lang]}`.toLowerCase() })), [lang]);
+  const results = useMemo(() => { const q = dq.trim().toLowerCase(); return q ? hay.filter(h => h.s.includes(q)).map(h => h.i) : []; }, [dq, hay]);
   const isSaved = (id: string) => data.saved.includes(id);
   const rowProps = (i: Item) => ({ item: i, saved: isSaved(i.id), onOpen: () => openItem(i), onSave: () => toggleSave(i.id) });
 
@@ -1404,9 +1707,9 @@ export default function App() {
 
       {query.trim() ? (
         <View style={{ paddingHorizontal: 20, marginTop: 18 }}>
-          {ITEMS.filter(matches).length === 0
-            ? <Text style={{ color: C.muted }}>{t(S.noResults)}</Text>
-            : ITEMS.filter(matches).map(i => <ItemRow key={i.id} {...rowProps(i)} />)}
+          {results.length === 0
+            ? (dq.trim() === query.trim() ? <Text style={{ color: C.muted }}>{t(S.noResults)}</Text> : null)
+            : <Grid>{results.map(i => <ItemRow key={i.id} {...rowProps(i)} />)}</Grid>}
         </View>
       ) : (
         <>
@@ -1416,7 +1719,7 @@ export default function App() {
               return (
                 <Pressable key={key} onPress={() => go(key)} accessibilityRole="button" accessibilityLabel={t(title)}
                   style={({ pressed }) => ({ width: "48%", minHeight: 164, marginBottom: 14, padding: 16, borderRadius: 24, backgroundColor: bg, justifyContent: "space-between", transform: [{ scale: pressed ? 0.98 : 1 }] })}>
-                  <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: "rgba(255,255,255,.16)", alignItems: "center", justifyContent: "center" }}>
+                  <View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: "rgba(199,182,166,.18)", alignItems: "center", justifyContent: "center" }}>
                     <Icon name={icon} size={30} color={fg} />
                   </View>
                   <View>
@@ -1499,7 +1802,7 @@ export default function App() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 14 }}>
           {placeFilters.map(([k, l]) => <Pill key={k} label={t(l)} on={placeFilter === k} onPress={() => setPlaceFilter(k)} color={CATC.explore} />)}
         </ScrollView>
-        {places.filter(p => (placeFilter === "all" || p.kind === placeFilter) && (!query.trim() || matches(p))).map(p => <OverlayCard key={p.id} {...rowProps(p)} />)}
+        <Grid>{places.filter(p => (placeFilter === "all" || p.kind === placeFilter) && (!query.trim() || matches(p))).map(p => <OverlayCard key={p.id} {...rowProps(p)} />)}</Grid>
         <QuizCard id="places" color={C.green} best={data.quiz.places} onStart={() => setQuizId("places")} />
       </View>
     </View>
@@ -1513,7 +1816,7 @@ export default function App() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
           {cultureTabs.map(([k, l]) => <Pill key={k} label={t(l)} on={cultureTab === k} onPress={() => setCultureTab(k)} color={CATC.culture} />)}
         </ScrollView>
-        {ITEMS.filter(i => i.cat === "culture" && i.kind === cultureTab).map(i => <StoryCard key={i.id} {...rowProps(i)} />)}
+        <Grid>{ITEMS.filter(i => i.cat === "culture" && i.kind === cultureTab).map(i => <StoryCard key={i.id} {...rowProps(i)} />)}</Grid>
         <QuizCard id="culture" color={C.brown} best={data.quiz.culture} onStart={() => setQuizId("culture")} />
       </View>
     </View>
@@ -1556,7 +1859,7 @@ export default function App() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
           {umkmFilters.map(([k, l]) => <Pill key={k} label={t(l)} on={umkmFilter === k} onPress={() => setUmkmFilter(k)} color={CATC.umkm} />)}
         </ScrollView>
-        {ITEMS.filter(i => i.cat === "umkm" && (umkmFilter === "all" || i.kind === umkmFilter)).map(i => <OverlayCard key={i.id} {...rowProps(i)} />)}
+        <Grid>{ITEMS.filter(i => i.cat === "umkm" && (umkmFilter === "all" || i.kind === umkmFilter)).map(i => <OverlayCard key={i.id} {...rowProps(i)} />)}</Grid>
         <Text style={{ fontSize: 12, color: C.muted, lineHeight: 17, marginTop: 4 }}>{t(S.checkLocal)}</Text>
       </View>
     </View>
@@ -1661,7 +1964,7 @@ export default function App() {
         {ideas.length === 0 ? <Text style={{ color: C.muted }}>{t(S.planIdeasEmpty)}</Text> : ideas.map(i => (
           <View key={i.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: C.paper, borderRadius: 16, borderWidth: 1, borderColor: C.line, padding: 10, marginBottom: 10 }}>
             <Pressable onPress={() => openItem(i)} style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Image source={i.image} style={{ width: 54, height: 54, borderRadius: 12, backgroundColor: C.sage }} />
+              <Image source={sized(i.image, 240)} style={{ width: 54, height: 54, borderRadius: 12, backgroundColor: C.sage }} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: SERIF, fontSize: 15, color: C.ink, fontWeight: "700" }} numberOfLines={2}>{t(i.title)}</Text>
                 <Text style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>~{kmBetween(refGeo, GEO[i.id]).toFixed(1)} km  ·  {t(KIND[i.kind])}</Text>
@@ -1683,12 +1986,14 @@ export default function App() {
       <View style={{ paddingHorizontal: 20 }}>
         {savedItems.length === 0
           ? <Text style={{ color: C.muted, lineHeight: 22 }}>{t(S.savedEmpty)}</Text>
-          : savedItems.map(i => <ItemRow key={i.id} {...rowProps(i)} />)}
+          : <Grid>{savedItems.map(i => <ItemRow key={i.id} {...rowProps(i)} />)}</Grid>}
       </View>
     </View>
   );
 
   const menu: [string, L, string | undefined, () => void][] = [
+    ["account-edit-outline", S.editProfile, undefined, () => setSheet("editProfile")],
+    ...(isGuest ? [] : [["lock-outline", S.changePassword, undefined, () => setSheet("password")] as [string, L, string | undefined, () => void]]),
     ["calendar-check-outline", S.myTrips, undefined, () => setSheet("trips")],
     ["message-text-outline", S.suggest, undefined, () => setSheet("suggest")],
     ["cog-outline", S.settings, undefined, () => setSheet("settings")],
@@ -1699,9 +2004,12 @@ export default function App() {
   const Profile = (
     <View style={{ paddingHorizontal: 20 }}>
       <View style={{ alignItems: "center", marginBottom: 20 }}>
-        <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: C.burgundy, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: C.sage2 }}>
-          <Text style={{ fontFamily: SERIF, fontSize: 38, color: C.white, fontWeight: "700" }}>{user.name.charAt(0).toUpperCase()}</Text>
-        </View>
+        <Pressable onPress={() => setSheet("editProfile")} accessibilityRole="button" accessibilityLabel={t(S.editProfile)}>
+          <Avatar uri={avatar} name={user.name} size={96} />
+          <View style={{ position: "absolute", right: -2, bottom: -2, width: 32, height: 32, borderRadius: 16, backgroundColor: C.green, borderWidth: 2, borderColor: C.cream, alignItems: "center", justifyContent: "center" }}>
+            <Icon name="camera" size={16} color={C.white} />
+          </View>
+        </Pressable>
         <Text style={{ fontFamily: SERIF, fontSize: 22, color: C.ink, fontWeight: "700", marginTop: 12 }}>{user.name}</Text>
         <Text style={{ color: C.muted, fontSize: 13, marginTop: 2 }}>{t(isGuest ? S.guestLabel : S.member)}</Text>
       </View>
@@ -1751,6 +2059,7 @@ export default function App() {
           <View style={{ flexDirection: "row", gap: 5, marginRight: 6 }}>
             {[C.padi, C.kunyit, C.bunga, C.lawar].map(c => <View key={c} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c }} />)}
           </View>
+          <Pressable onPress={() => go("profile")} hitSlop={6} accessibilityRole="button" accessibilityLabel={t(S.tabProfile)}><Avatar uri={avatar} name={user.name} size={34} /></Pressable>
           <Pressable onPress={() => setLang(lang === "en" ? "id" : "en")} hitSlop={8} accessibilityLabel="Language"
             style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, backgroundColor: C.paper, borderWidth: 1, borderColor: C.line }}>
             <Icon name="translate" size={16} color={C.green} />
@@ -1773,7 +2082,7 @@ export default function App() {
           {tabs.map(([name, label, icon]) => {
             const on = tabActive === name;
             return (
-              <Pressable key={name} onPress={() => (name === "map" ? openMap() : go(name))} style={{ flex: 1, alignItems: "center" }}>
+              <Pressable key={name} onPress={() => (name === "map" ? openMap() : go(name))} accessibilityRole="tab" accessibilityLabel={t(label)} accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: "center" }}>
                 <Icon name={on ? icon : `${icon}-outline`} size={24} color={on ? C.burgundy : C.muted} />
                 <Text style={{ fontSize: 12, marginTop: 2, color: on ? C.ink : C.muted, fontWeight: on ? "800" : "500" }}>{t(label)}</Text>
               </Pressable>
@@ -1875,6 +2184,7 @@ export default function App() {
           <Sheet title={t(S.settings)} onClose={() => setSheet(null)}>
             <Text style={{ color: C.muted, marginBottom: 16 }}>{isGuest ? t(S.guestNote) : user.email}</Text>
             <PrimaryButton outline icon="history" label={t(S.clearHistory)} onPress={() => setData(d => ({ ...d, recent: [], searches: [] }))} />
+            {!isGuest && <View style={{ marginTop: 12 }}><PrimaryButton outline tone="red" icon="account-remove-outline" label={t(S.deleteAccount)} onPress={deleteAccount} /></View>}
           </Sheet>
         )}
         {sheet === "help" && <Sheet title={t(S.help)} onClose={() => setSheet(null)}><Text style={{ color: C.ink, lineHeight: 24, fontSize: 15 }}>{t(S.helpText)}</Text></Sheet>}
@@ -1886,6 +2196,8 @@ export default function App() {
           </Sheet>
         )}
         {sheet === "suggest" && <SuggestionSheet name={user.name} onClose={() => setSheet(null)} />}
+        {sheet === "editProfile" && <EditProfileSheet user={user} avatar={avatar} isGuest={isGuest} onPhoto={setPhoto} onName={saveName} onClose={() => setSheet(null)} />}
+        {sheet === "password" && !isGuest && <PasswordSheet onSubmit={changePw} onClose={() => setSheet(null)} />}
         {sheet === "more" && (
           <Sheet title={t(S.moreAct)} onClose={() => setSheet(null)}>
             {[
